@@ -122,7 +122,7 @@ def Wave():
         robot.MoveJ(wave_start)
         print("Wave FINISHED")
     else:
-        print("Wave targets not found!")
+        print("Wave targets are not found!")
 
 # -----------------------------
 # Main
