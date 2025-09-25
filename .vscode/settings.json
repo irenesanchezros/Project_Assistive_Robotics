@@ -1,8 +1,0 @@
-{
-"python.defaultInterpreterPath": "C:\\Users\\manel.puig\\AppData\\Local\\Programs\\Python\\Python310\\python.exe",
-"terminal.integrated.env.windows": {
-        "PATH": "C:\\Users\\manel.puig\\AppData\\Local\\Programs\\Python\\Python310\\;${env:PATH}"
-    },
-    "python-envs.defaultEnvManager": "ms-python.python:system",
-    "python-envs.pythonProjects": [] 
-}
