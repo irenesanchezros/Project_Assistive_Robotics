@@ -157,7 +157,7 @@ During the second hour, students will adapt and generate the proper and obtimise
 - You can improve and automate your code if you use:
     - For moveJ:
         ```python
-        j1, j2, j3, j4, j5, j6 = list(np.radians(Target.Joints()))
+        j1, j2, j3, j4, j5, j6 = np.radians(Target.Joints()).tolist()[0]
         movej_Target = f"movej([{j1},{j2}, {j3}, {j4}, {j5}, {j6}],{accel_mss},{speed_ms},{time_high},{blend_r})"
         ```
     - For moveL:
