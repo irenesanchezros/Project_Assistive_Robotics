@@ -175,31 +175,52 @@ def Adjust_light():
         print("Adjust light targets not found!")
         return
 
-    # --- Simulació a RoboDK
+    # ---------------- SIMULACIÓ A ROBODK ----------------
     robot.setSpeed(30)
-    robot.MoveL(app_light, True)
-    robot.MoveL(adj_left, True)
-    robot.MoveL(adj_right, True)
-    robot.MoveL(app_light, True)
+
+    def safe_moveL(target, name):
+        """Intenta fer MoveL a un target, captura l'error si no es pot arribar"""
+        try:
+            robot.MoveL(target, True)
+            print(f"✓ {name} reachable")
+            return True
+        except TargetReachError as e:
+            print(f"⚠ No es pot arribar a {name}: {e}")
+            return False
+
+    safe_moveL(app_light, "app_light")
+    safe_moveL(adj_left, "adjust_left")
+    safe_moveL(adj_right, "adjust_right")
+    safe_moveL(app_light, "app_light (retorn)")
+
     print("Adjust light done (simulation)")
 
+    # ---------------- ENVIAMENT A ROBOT REAL ----------------
     def pose_to_p(pose_mat):
         """Converteix una Pose() de RoboDK al format p[x,y,z,rx,ry,rz] d'URScript"""
         xyzrpw = Pose_2_UR(pose_mat)  # [x, y, z, rx, ry, rz]
         return "p[{:.6f}, {:.6f}, {:.6f}, {:.6f}, {:.6f}, {:.6f}]".format(*xyzrpw)
 
-    # --- Enviament al robot real
     if robot_is_connected:
         send_ur_script(set_tcp)
         receive_response(0.2)
-        movel_app_light = f"movel({pose_to_p(app_light.Pose())},{accel_mss},{speed_ms},{timel},{blend_r})"
-        movel_adj_left  = f"movel({pose_to_p(adj_left.Pose())},{accel_mss},{speed_ms},{timel},{blend_r})"
-        movel_adj_right = f"movel({pose_to_p(adj_right.Pose())},{accel_mss},{speed_ms},{timel},{blend_r})"
-        send_ur_script(movel_app_light); receive_response(timel)
-        send_ur_script(movel_adj_left);  receive_response(timel)
-        send_ur_script(movel_adj_right); receive_response(timel)
-        send_ur_script(movel_app_light); receive_response(timel)
+
+        for target, name, spd in [
+            (app_light, "app_light", speed_ms),
+            (adj_left, "adjust_left", speed_ms),
+            (adj_right, "adjust_right", speed_ms),
+            (app_light, "app_light (retorn)", speed_ms),
+        ]:
+            if target.Valid():
+                cmd = f"movel({pose_to_p(target.Pose())},{accel_mss},{spd},{timel},{blend_r})"
+                send_ur_script(cmd)
+                receive_response(timel)
+                print(f"✓ URScript enviat per {name}")
+            else:
+                print(f"⚠ {name} no vàlid per URScript")
+
         print("Adjust light (URScript) sent")
+
 
 # -----------------------------
 # Main
