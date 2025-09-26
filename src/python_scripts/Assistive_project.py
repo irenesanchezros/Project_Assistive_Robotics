@@ -163,6 +163,43 @@ def Press_sanitizer():
         send_ur_script(movel_ret);   receive_response(timel)
         print("Sanitizer (URScript) sent")
 
+def Adjust_light():
+    """Moviment per ajustar la llum cap amunt, esquerra i dreta"""
+    print("Adjust light")
+
+    app_light = RDK.Item('app_light')
+    adj_left  = RDK.Item('adjust_left')
+    adj_right = RDK.Item('adjust_right')
+
+    if not (app_light.Valid() and adj_left.Valid() and adj_right.Valid()):
+        print("Adjust light targets not found!")
+        return
+
+    # --- Simulació a RoboDK
+    robot.setSpeed(30)
+    robot.MoveL(app_light, True)
+    robot.MoveL(adj_left, True)
+    robot.MoveL(adj_right, True)
+    robot.MoveL(app_light, True)
+    print("Adjust light done (simulation)")
+
+    def pose_to_p(pose_mat):
+        """Converteix una Pose() de RoboDK al format p[x,y,z,rx,ry,rz] d'URScript"""
+        xyzrpw = Pose_2_UR(pose_mat)  # [x, y, z, rx, ry, rz]
+        return "p[{:.6f}, {:.6f}, {:.6f}, {:.6f}, {:.6f}, {:.6f}]".format(*xyzrpw)
+
+    # --- Enviament al robot real
+    if robot_is_connected:
+        send_ur_script(set_tcp)
+        receive_response(0.2)
+        movel_app_light = f"movel({pose_to_p(app_light.Pose())},{accel_mss},{speed_ms},{timel},{blend_r})"
+        movel_adj_left  = f"movel({pose_to_p(adj_left.Pose())},{accel_mss},{speed_ms},{timel},{blend_r})"
+        movel_adj_right = f"movel({pose_to_p(adj_right.Pose())},{accel_mss},{speed_ms},{timel},{blend_r})"
+        send_ur_script(movel_app_light); receive_response(timel)
+        send_ur_script(movel_adj_left);  receive_response(timel)
+        send_ur_script(movel_adj_right); receive_response(timel)
+        send_ur_script(movel_app_light); receive_response(timel)
+        print("Adjust light (URScript) sent")
 
 # -----------------------------
 # Main
@@ -175,7 +212,7 @@ def main():
     Give_me_5()
     Wave()
     Press_sanitizer()
-
+    Adjust_light() 
     if robot_is_connected:
         robot_socket.close()
 
