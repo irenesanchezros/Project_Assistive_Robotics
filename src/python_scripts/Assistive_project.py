@@ -154,15 +154,26 @@ def Move_drug():
         print("Move_drug target not found!")
 
 def Drop_drug():
+    """Deixa el medicament a velocitat lenta per més realisme/control."""
     print("Drop drug")
-    if Drop_drug_target.Valid():
-        robot.MoveL(Drop_drug_target, True)
-    else:
+    if not Drop_drug_target.Valid():
         print("Drop_drug target not found!")
+        return
+
+    DEFAULT_LINEAR_SPEED = 15  # mm/s 
+
+    # Baixa la velocitat per al drop
+    robot.setSpeed(5)  # més lent i controlat
+    robot.MoveL(Drop_drug_target, True)
+
+    # Torna a la velocitat per defecte
+    robot.setSpeed(DEFAULT_LINEAR_SPEED)
+
 
 def Mix_solution():
     """
-    Stirring movement: circular motion in X-Z plane (Y fixed).
+    Stirring ràpid i fluid: moviment circular en el pla X-Z (Y variable),
+    amb més velocitat i blending entre punts per evitar aturades.
     """
     print("Mix solution")
     if not Mix_solution_target.Valid():
@@ -172,40 +183,43 @@ def Mix_solution():
     center_pose = Mix_solution_target.Pose()
     print("Center pose found. Starting X-Z stirring...")
 
-    # Parameters
-    radius_mm = 30.0      # radius in mm
-    x_offset = 0 #X fixed
-    turns = 3             # number of turns
-    steps = 60            # points per turn
+    # Paràmetres de l’agitació
+    radius_mm = 30.0      # radi (mm)
+    x_offset = 0          # X fix
+    turns = 3             # voltes
+    steps = 36            # menys punts per volta -> trajecte més ràpid
     total_points = turns * steps
 
-    # Faster speed for stirring
-    robot.setSpeed(1000)
-    delay_per_move = 0.00001
+    # Configura velocitat alta i blending per suavitzar i accelerar
+    previous_speed = 200  # guarda una referència de “default” si la necessites
+    robot.setSpeed(1800)  # lineal alta per a l’agitació
+    robot.setRounding(10.0)  # mm de blending entre punts (suavitza i accelera)
 
     try:
-        # approach from above
+        # Aproximació
         approach = center_pose * transl(0, 0, 50)
         robot.MoveL(approach, True)
         robot.MoveL(center_pose, True)
 
-        # perform X-Z circular motion
+        # Trajecte circular
         for i in range(total_points):
             angle = 2.0 * math.pi * (i / steps)
-            y= radius_mm * math.sin(angle)
+            y = radius_mm * math.sin(angle)
             z = radius_mm * math.cos(angle)
             new_pose = center_pose * transl(x_offset, y, z)
             robot.MoveL(new_pose, True)
-            time.sleep(delay_per_move)
 
-        # return to center and move up
+        # Retorn al centre i sortida
         robot.MoveL(center_pose, True)
         robot.MoveL(approach, True)
         print("Mix solution done (X-Z plane)")
 
     except Exception as e:
         print("Error during Mix_solution():", e)
-
+    finally:
+        # Restaura paràmetres “normals”
+        robot.setRounding(0.0)
+        robot.setSpeed(previous_speed)
 
 # -----------------------------
 # Main
