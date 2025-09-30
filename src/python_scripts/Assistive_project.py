@@ -40,10 +40,6 @@ timel = 4
 # URScript commands
 set_tcp = "set_tcp(p[0.000000, 0.000000, 0.050000, 0.000000, 0.000000, 0.000000])"
 movej_init = f"movej([-1.009423, -1.141297, -1.870417, 3.011723, -1.009423, 0.000000],1.20000,0.75000,{timel},0.0000)"
-movel_app_shake = f"movel([-2.268404, -1.482966, -2.153143, -2.647089, -2.268404, 0.000000],{accel_mss},{speed_ms},{timel},0.000)"
-movel_shake = f"movel([-2.268404, -1.663850, -2.294637, -2.324691, -2.268404, 0.000000],{accel_mss},{speed_ms},{timel/2},0.000)"
-movel_app_give5 = f"movel([-2.280779, -1.556743, -2.129529, 5.257071, -1.570796, 2.280779],{accel_mss},{speed_ms},{timel},0.000)"
-movel_give5 = f"movel([-2.195869, -1.642206, -2.040971, 5.253965, -1.570796, 2.195869],{accel_mss},{speed_ms},{timel/2},0.000)"
 
 # -----------------------------
 # Socket connection
@@ -74,39 +70,7 @@ def Init():
         send_ur_script(movej_init)
         receive_response(timej)
 
-def Hand_shake():
-    print("Hand Shake")
-    robot.setSpeed(20)
-    robot.MoveL(App_shake_target, True)
-    robot.setSpeed(100)
-    robot.MoveL(Shake_target, True)
-    robot.MoveL(App_shake_target, True)
-    if robot_is_connected:
-        send_ur_script(set_tcp)
-        receive_response(1)
-        send_ur_script(movel_app_shake)
-        receive_response(timel)
-        send_ur_script(movel_shake)
-        receive_response(timel)
-        send_ur_script(movel_app_shake)
-        receive_response(timel)
 
-def Give_me_5():
-    print("Give me 5!")
-    robot.setSpeed(20)
-    robot.MoveL(App_give5_target, True)
-    robot.setSpeed(100)
-    robot.MoveL(Give5_target, True)
-    robot.MoveL(App_give5_target, True)
-    if robot_is_connected:
-        send_ur_script(set_tcp)
-        receive_response(1)
-        send_ur_script(movel_app_give5)
-        receive_response(timel)
-        send_ur_script(movel_give5)
-        receive_response(timel)
-        send_ur_script(movel_app_give5)
-        receive_response(timel)
 
 def Wave():
     print("Wave")
@@ -167,60 +131,44 @@ def Adjust_light():
     """Moviment per ajustar la llum cap amunt, esquerra i dreta"""
     print("Adjust light")
 
-    app_light = RDK.Item('app_light')
-    adj_left  = RDK.Item('adjust_left')
-    adj_right = RDK.Item('adjust_right')
+    app_light   = RDK.Item('app_light')
+    adjust_left  = RDK.Item('adjust_left')
+    adjust_right = RDK.Item('adjust_right')
 
-    if not (app_light.Valid() and adj_left.Valid() and adj_right.Valid()):
+    if not (app_light.Valid() and adjust_left.Valid() and adjust_right.Valid()):
         print("Adjust light targets not found!")
         return
 
-    # ---------------- SIMULACIÓ A ROBODK ----------------
-    robot.setSpeed(30)
-
-    def safe_moveL(target, name):
-        """Intenta fer MoveL a un target, captura l'error si no es pot arribar"""
-        try:
-            robot.MoveL(target, True)
-            print(f"✓ {name} reachable")
-            return True
-        except TargetReachError as e:
-            print(f"⚠ No es pot arribar a {name}: {e}")
-            return False
-
-    safe_moveL(app_light, "app_light")
-    safe_moveL(adj_left, "adjust_left")
-    safe_moveL(adj_right, "adjust_right")
-    safe_moveL(app_light, "app_light (retorn)")
-
+    # --- Simulació a RoboDK
+    robot.setSpeed(20)
+    robot.MoveL(app_light, True)
+    robot.setSpeed(15)
+    robot.MoveL(adjust_left, True)
+    robot.MoveL(adjust_right, True)
+    robot.MoveL(app_light, True)
     print("Adjust light done (simulation)")
 
-    # ---------------- ENVIAMENT A ROBOT REAL ----------------
     def pose_to_p(pose_mat):
         """Converteix una Pose() de RoboDK al format p[x,y,z,rx,ry,rz] d'URScript"""
         xyzrpw = Pose_2_UR(pose_mat)  # [x, y, z, rx, ry, rz]
         return "p[{:.6f}, {:.6f}, {:.6f}, {:.6f}, {:.6f}, {:.6f}]".format(*xyzrpw)
 
+    # --- Enviament al robot real
     if robot_is_connected:
         send_ur_script(set_tcp)
         receive_response(0.2)
 
-        for target, name, spd in [
-            (app_light, "app_light", speed_ms),
-            (adj_left, "adjust_left", speed_ms),
-            (adj_right, "adjust_right", speed_ms),
-            (app_light, "app_light (retorn)", speed_ms),
-        ]:
-            if target.Valid():
-                cmd = f"movel({pose_to_p(target.Pose())},{accel_mss},{spd},{timel},{blend_r})"
-                send_ur_script(cmd)
-                receive_response(timel)
-                print(f"✓ URScript enviat per {name}")
-            else:
-                print(f"⚠ {name} no vàlid per URScript")
+        movel_app    = f"movel({pose_to_p(app_light.Pose())},{accel_mss},{speed_ms},{timel},{blend_r})"
+        movel_left   = f"movel({pose_to_p(adjust_left.Pose())},{accel_mss},{speed_ms},{timel},{blend_r})"
+        movel_right  = f"movel({pose_to_p(adjust_right.Pose())},{accel_mss},{speed_ms},{timel},{blend_r})"
+        movel_return = f"movel({pose_to_p(app_light.Pose())},{accel_mss},{speed_ms},{timel},{blend_r})"
+
+        send_ur_script(movel_app);    receive_response(timel)
+        send_ur_script(movel_left);   receive_response(timel)
+        send_ur_script(movel_right);  receive_response(timel)
+        send_ur_script(movel_return); receive_response(timel)
 
         print("Adjust light (URScript) sent")
-
 
 # -----------------------------
 # Main
@@ -229,8 +177,6 @@ def main():
     robot_is_connected = check_robot_port(ROBOT_IP, ROBOT_PORT)
 
     Init()
-    Hand_shake()
-    Give_me_5()
     Wave()
     Press_sanitizer()
     Adjust_light() 
