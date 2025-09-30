@@ -124,6 +124,104 @@ def Wave():
     else:
         print("Wave targets are not found!")
 
+def Press_sanitizer():
+    """Moviment per prémer el dosificador i deixar caure el gel a la mà."""
+    print("Press sanitizer")
+
+    app  = RDK.Item('App_sanitizer')
+    press = RDK.Item('Press_sanitizer')
+    ret   = RDK.Item('Ret_sanitizer')
+
+    if not (app.Valid() and press.Valid() and ret.Valid()):
+        print("Sanitizer targets not found!")
+        return
+
+    # --- Simulació a RoboDK
+    robot.setSpeed(20)
+    robot.MoveL(app, True)
+    robot.setSpeed(10)      # més lent per fer pressió
+    robot.MoveL(press, True)
+    time.sleep(1.0)         # mantenir pressió 1 s
+    robot.setSpeed(20)
+    robot.MoveL(ret, True)
+    print("Sanitizer done (simulation)")
+
+    def pose_to_p(pose_mat):
+        """Converteix una Pose() de RoboDK al format p[x,y,z,rx,ry,rz] d'URScript"""
+        xyzrpw = Pose_2_UR(pose_mat)  # [x, y, z, rx, ry, rz]
+        return "p[{:.6f}, {:.6f}, {:.6f}, {:.6f}, {:.6f}, {:.6f}]".format(*xyzrpw)
+
+    # --- Enviament al robot real
+    if robot_is_connected:
+        send_ur_script(set_tcp)
+        receive_response(0.2)
+        movel_app   = f"movel({pose_to_p(app.Pose())},{accel_mss},{speed_ms},{timel},{blend_r})"
+        movel_press = f"movel({pose_to_p(press.Pose())},{accel_mss},{speed_ms/2},{timel/2},{blend_r})"
+        movel_ret   = f"movel({pose_to_p(ret.Pose())},{accel_mss},{speed_ms},{timel},{blend_r})"
+        send_ur_script(movel_app);   receive_response(timel)
+        send_ur_script(movel_press); receive_response(timel/2 + 1.0)
+        send_ur_script(movel_ret);   receive_response(timel)
+        print("Sanitizer (URScript) sent")
+
+def Adjust_light():
+    """Moviment per ajustar la llum cap amunt, esquerra i dreta"""
+    print("Adjust light")
+
+    app_light = RDK.Item('app_light')
+    adj_left  = RDK.Item('adjust_left')
+    adj_right = RDK.Item('adjust_right')
+
+    if not (app_light.Valid() and adj_left.Valid() and adj_right.Valid()):
+        print("Adjust light targets not found!")
+        return
+
+    # ---------------- SIMULACIÓ A ROBODK ----------------
+    robot.setSpeed(30)
+
+    def safe_moveL(target, name):
+        """Intenta fer MoveL a un target, captura l'error si no es pot arribar"""
+        try:
+            robot.MoveL(target, True)
+            print(f"✓ {name} reachable")
+            return True
+        except TargetReachError as e:
+            print(f"⚠ No es pot arribar a {name}: {e}")
+            return False
+
+    safe_moveL(app_light, "app_light")
+    safe_moveL(adj_left, "adjust_left")
+    safe_moveL(adj_right, "adjust_right")
+    safe_moveL(app_light, "app_light (retorn)")
+
+    print("Adjust light done (simulation)")
+
+    # ---------------- ENVIAMENT A ROBOT REAL ----------------
+    def pose_to_p(pose_mat):
+        """Converteix una Pose() de RoboDK al format p[x,y,z,rx,ry,rz] d'URScript"""
+        xyzrpw = Pose_2_UR(pose_mat)  # [x, y, z, rx, ry, rz]
+        return "p[{:.6f}, {:.6f}, {:.6f}, {:.6f}, {:.6f}, {:.6f}]".format(*xyzrpw)
+
+    if robot_is_connected:
+        send_ur_script(set_tcp)
+        receive_response(0.2)
+
+        for target, name, spd in [
+            (app_light, "app_light", speed_ms),
+            (adj_left, "adjust_left", speed_ms),
+            (adj_right, "adjust_right", speed_ms),
+            (app_light, "app_light (retorn)", speed_ms),
+        ]:
+            if target.Valid():
+                cmd = f"movel({pose_to_p(target.Pose())},{accel_mss},{spd},{timel},{blend_r})"
+                send_ur_script(cmd)
+                receive_response(timel)
+                print(f"✓ URScript enviat per {name}")
+            else:
+                print(f"⚠ {name} no vàlid per URScript")
+
+        print("Adjust light (URScript) sent")
+
+
 # -----------------------------
 # Main
 def main():
@@ -134,7 +232,8 @@ def main():
     Hand_shake()
     Give_me_5()
     Wave()
-
+    Press_sanitizer()
+    Adjust_light() 
     if robot_is_connected:
         robot_socket.close()
 
