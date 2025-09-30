@@ -41,6 +41,7 @@ timel = 4
 set_tcp = "set_tcp(p[0.000000, 0.000000, 0.050000, 0.000000, 0.000000, 0.000000])"
 movej_init = f"movej([-1.009423, -1.141297, -1.870417, 3.011723, -1.009423, 0.000000],1.20000,0.75000,{timel},0.0000)"
 
+
 # -----------------------------
 # Socket connection
 def check_robot_port(ip, port):
@@ -70,7 +71,39 @@ def Init():
         send_ur_script(movej_init)
         receive_response(timej)
 
+def Hand_shake():
+    print("Hand Shake")
+    robot.setSpeed(20)
+    robot.MoveL(App_shake_target, True)
+    robot.setSpeed(100)
+    robot.MoveL(Shake_target, True)
+    robot.MoveL(App_shake_target, True)
+    if robot_is_connected:
+        send_ur_script(set_tcp)
+        receive_response(1)
+        send_ur_script(movel_app_shake)
+        receive_response(timel)
+        send_ur_script(movel_shake)
+        receive_response(timel)
+        send_ur_script(movel_app_shake)
+        receive_response(timel)
 
+def Give_me_5():
+    print("Give me 5!")
+    robot.setSpeed(20)
+    robot.MoveL(App_give5_target, True)
+    robot.setSpeed(100)
+    robot.MoveL(Give5_target, True)
+    robot.MoveL(App_give5_target, True)
+    if robot_is_connected:
+        send_ur_script(set_tcp)
+        receive_response(1)
+        send_ur_script(movel_app_give5)
+        receive_response(timel)
+        send_ur_script(movel_give5)
+        receive_response(timel)
+        send_ur_script(movel_app_give5)
+        receive_response(timel)
 
 def Wave():
     print("Wave")
