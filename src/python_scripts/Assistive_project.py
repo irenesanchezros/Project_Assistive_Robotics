@@ -1,8 +1,9 @@
 import os
 import time
 import socket
+import math
 from robodk.robolink import *   # API RoboDK
-from robodk.robomath import *   # Fonctions utiles
+from robodk.robomath import *   # Funcions útils
 
 # -----------------------------
 # Load RoboDK project
@@ -16,11 +17,13 @@ RDK.AddFile(absolute_path)
 robot = RDK.Item("UR5e")
 base = RDK.Item("UR5e Base")
 tool = RDK.Item('Hand')
+
+# Targets 
 Init_target = RDK.Item('Init')
-App_shake_target = RDK.Item('App_shake')
-Shake_target = RDK.Item('Shake')
-App_give5_target = RDK.Item('App_give5')
-Give5_target = RDK.Item('Give5')
+Pick_drug_target = RDK.Item('Pick_drug')
+Move_drug_target = RDK.Item('Move_drug')
+Drop_drug_target = RDK.Item('Drop_drug')
+Mix_solution_target = RDK.Item('Mix_solution')
 
 robot.setPoseFrame(base)
 robot.setPoseTool(tool)
@@ -41,7 +44,6 @@ timel = 4
 set_tcp = "set_tcp(p[0.000000, 0.000000, 0.050000, 0.000000, 0.000000, 0.000000])"
 movej_init = f"movej([-1.009423, -1.141297, -1.870417, 3.011723, -1.009423, 0.000000],1.20000,0.75000,{timel},0.0000)"
 
-
 # -----------------------------
 # Socket connection
 def check_robot_port(ip, port):
@@ -61,10 +63,13 @@ def receive_response(t):
     time.sleep(t)
 
 # -----------------------------
-# Movements
+# Moviments bàsics
 def Init():
     print("Init")
-    robot.MoveL(Init_target, True)
+    if Init_target.Valid():
+        robot.MoveL(Init_target, True)
+    else:
+        print("Init target not found!")
     if robot_is_connected:
         send_ur_script(set_tcp)
         receive_response(1)
@@ -99,46 +104,27 @@ def Press_sanitizer():
         print("Sanitizer targets not found!")
         return
 
-    # --- Simulació a RoboDK
     robot.setSpeed(20)
     robot.MoveL(app, True)
-    robot.setSpeed(10)      # més lent per fer pressió
+    robot.setSpeed(10)
     robot.MoveL(press, True)
-    time.sleep(1.0)         # mantenir pressió 1 s
+    time.sleep(1.0)
     robot.setSpeed(20)
     robot.MoveL(ret, True)
     print("Sanitizer done (simulation)")
-
-    def pose_to_p(pose_mat):
-        """Converteix una Pose() de RoboDK al format p[x,y,z,rx,ry,rz] d'URScript"""
-        xyzrpw = Pose_2_UR(pose_mat)  # [x, y, z, rx, ry, rz]
-        return "p[{:.6f}, {:.6f}, {:.6f}, {:.6f}, {:.6f}, {:.6f}]".format(*xyzrpw)
-
-    # --- Enviament al robot real
-    if robot_is_connected:
-        send_ur_script(set_tcp)
-        receive_response(0.2)
-        movel_app   = f"movel({pose_to_p(app.Pose())},{accel_mss},{speed_ms},{timel},{blend_r})"
-        movel_press = f"movel({pose_to_p(press.Pose())},{accel_mss},{speed_ms/2},{timel/2},{blend_r})"
-        movel_ret   = f"movel({pose_to_p(ret.Pose())},{accel_mss},{speed_ms},{timel},{blend_r})"
-        send_ur_script(movel_app);   receive_response(timel)
-        send_ur_script(movel_press); receive_response(timel/2 + 1.0)
-        send_ur_script(movel_ret);   receive_response(timel)
-        print("Sanitizer (URScript) sent")
 
 def Adjust_light():
     """Moviment per ajustar la llum cap amunt, esquerra i dreta"""
     print("Adjust light")
 
-    app_light   = RDK.Item('app_light')
-    adjust_left  = RDK.Item('adjust_left')
-    adjust_right = RDK.Item('adjust_right')
+    app_light   = RDK.Item('App_light')
+    adjust_left  = RDK.Item('Adjust_left')
+    adjust_right = RDK.Item('Adjust_right')
 
     if not (app_light.Valid() and adjust_left.Valid() and adjust_right.Valid()):
         print("Adjust light targets not found!")
         return
 
-    # --- Simulació a RoboDK
     robot.setSpeed(20)
     robot.MoveL(app_light, True)
     robot.setSpeed(15)
@@ -147,27 +133,75 @@ def Adjust_light():
     robot.MoveL(app_light, True)
     print("Adjust light done (simulation)")
 
-    def pose_to_p(pose_mat):
-        """Converteix una Pose() de RoboDK al format p[x,y,z,rx,ry,rz] d'URScript"""
-        xyzrpw = Pose_2_UR(pose_mat)  # [x, y, z, rx, ry, rz]
-        return "p[{:.6f}, {:.6f}, {:.6f}, {:.6f}, {:.6f}, {:.6f}]".format(*xyzrpw)
+# -----------------------------
+# Nous moviments
+def Pick_drug():
+    print("Pick drug")
+    if Pick_drug_target.Valid():
+        robot.MoveL(Pick_drug_target, True)
+    else:
+        print("Pick_drug target not found!")
 
-    # --- Enviament al robot real
-    if robot_is_connected:
-        send_ur_script(set_tcp)
-        receive_response(0.2)
+def Move_drug():
+    print("Move drug")
+    if Move_drug_target.Valid():
+        robot.MoveL(Move_drug_target, True)
+    else:
+        print("Move_drug target not found!")
 
-        movel_app    = f"movel({pose_to_p(app_light.Pose())},{accel_mss},{speed_ms},{timel},{blend_r})"
-        movel_left   = f"movel({pose_to_p(adjust_left.Pose())},{accel_mss},{speed_ms},{timel},{blend_r})"
-        movel_right  = f"movel({pose_to_p(adjust_right.Pose())},{accel_mss},{speed_ms},{timel},{blend_r})"
-        movel_return = f"movel({pose_to_p(app_light.Pose())},{accel_mss},{speed_ms},{timel},{blend_r})"
+def Drop_drug():
+    print("Drop drug")
+    if Drop_drug_target.Valid():
+        robot.MoveL(Drop_drug_target, True)
+    else:
+        print("Drop_drug target not found!")
 
-        send_ur_script(movel_app);    receive_response(timel)
-        send_ur_script(movel_left);   receive_response(timel)
-        send_ur_script(movel_right);  receive_response(timel)
-        send_ur_script(movel_return); receive_response(timel)
+def Mix_solution():
+    """
+    Stirring movement: circular motion in X-Z plane (Y fixed).
+    """
+    print("Mix solution")
+    if not Mix_solution_target.Valid():
+        print("Mix_solution target not found!")
+        return
 
-        print("Adjust light (URScript) sent")
+    center_pose = Mix_solution_target.Pose()
+    print("Center pose found. Starting X-Z stirring...")
+
+    # Parameters
+    radius_mm = 30.0      # radius in mm
+    x_offset = 0 #X fixed
+    turns = 3             # number of turns
+    steps = 60            # points per turn
+    total_points = turns * steps
+
+    # Faster speed for stirring
+    robot.setSpeed(1000)
+    delay_per_move = 0.00001
+
+    try:
+        # approach from above
+        approach = center_pose * transl(0, 0, 50)
+        robot.MoveL(approach, True)
+        robot.MoveL(center_pose, True)
+
+        # perform X-Z circular motion
+        for i in range(total_points):
+            angle = 2.0 * math.pi * (i / steps)
+            y= radius_mm * math.sin(angle)
+            z = radius_mm * math.cos(angle)
+            new_pose = center_pose * transl(x_offset, y, z)
+            robot.MoveL(new_pose, True)
+            time.sleep(delay_per_move)
+
+        # return to center and move up
+        robot.MoveL(center_pose, True)
+        robot.MoveL(approach, True)
+        print("Mix solution done (X-Z plane)")
+
+    except Exception as e:
+        print("Error during Mix_solution():", e)
+
 
 # -----------------------------
 # Main
@@ -178,7 +212,14 @@ def main():
     Init()
     Wave()
     Press_sanitizer()
-    Adjust_light() 
+    Adjust_light()
+
+    # Seqüència nova
+    Pick_drug()
+    Move_drug()
+    Drop_drug()
+    Mix_solution()
+
     if robot_is_connected:
         robot_socket.close()
 
