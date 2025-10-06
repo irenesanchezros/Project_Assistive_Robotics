@@ -77,9 +77,6 @@ def Init():
         receive_response(timej)
 
 
-#comments on github
-#more comment
-
 def Wave():
     print("Wave")
     wave_start = RDK.Item('Wave_start')
@@ -87,7 +84,16 @@ def Wave():
     wave_right = RDK.Item('Wave_right')
 
     if wave_start.Valid() and wave_left.Valid() and wave_right.Valid():
-        robot.MoveJ(wave_start)
+        # --- CANVI: encara més lent del Init -> Wave_start ---
+        # linear = 20 mm/s, accel_linear = 100 mm/s²
+        # joint = 10 °/s, joint_accel = 20 °/s² (més suau)
+        robot.setSpeed(20, 100, 10, 20)
+        robot.MoveJ(wave_start)   # entrada molt suau
+
+        # Restaura valors normals per a la resta del Wave
+        robot.setSpeed(20, 100, 60, 120)
+        # -----------------------------------------------------
+
         for i in range(3):
             robot.MoveL(wave_left)
             robot.MoveL(wave_right)
@@ -95,6 +101,7 @@ def Wave():
         print("Wave FINISHED")
     else:
         print("Wave targets are not found!")
+
 
 def Press_sanitizer():
     """Moviment per prémer el dosificador i deixar caure el gel a la mà."""
@@ -117,6 +124,7 @@ def Press_sanitizer():
     robot.MoveL(ret, True)
     print("Sanitizer done (simulation)")
 
+
 def Adjust_light():
     """Moviment per ajustar la llum cap amunt, esquerra i dreta"""
     print("Adjust light")
@@ -137,8 +145,7 @@ def Adjust_light():
     robot.MoveL(app_light, True)
     print("Adjust light done (simulation)")
 
-# -----------------------------
-# Nous moviments
+
 def Pick_drug():
     print("Pick drug")
     if Pick_drug_target.Valid():
@@ -146,12 +153,14 @@ def Pick_drug():
     else:
         print("Pick_drug target not found!")
 
+
 def Move_drug():
     print("Move drug")
     if Move_drug_target.Valid():
         robot.MoveL(Move_drug_target, True)
     else:
         print("Move_drug target not found!")
+
 
 def Drop_drug():
     """Deixa el medicament a velocitat lenta per més realisme/control."""
