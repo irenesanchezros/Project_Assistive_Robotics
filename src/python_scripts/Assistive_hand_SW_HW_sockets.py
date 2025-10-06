@@ -12,7 +12,11 @@ from robodk.robomath import *
 relative_path = "src/roboDK/Assistive_UR5e.rdk"
 absolute_path = os.path.abspath(relative_path)
 RDK = Robolink()
+print("Loading RoboDK...")
+time.sleep(5)
 RDK.AddFile(absolute_path)
+print("Loading RoboDK Project...")
+time.sleep(3)
 
 # Robot setup
 robot = RDK.Item("UR5e")
@@ -151,3 +155,4 @@ def main():
 if __name__ == "__main__":
     main()
     #confirm_close()
+    RDK.CloseRoboDK()

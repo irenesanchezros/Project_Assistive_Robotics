@@ -2,7 +2,7 @@
 
 ## ROBOTICS AND CONTROL OF BIOMEDICAL SYSTEMS
 ### Robotic arm Universal Robot UR5e
-### Laboratory session 2: UR5e Social/Assistive robotic task design
+### Laboratory session 2&3: UR5e Social/Assistive robotic task design
 
 ---
 
@@ -154,17 +154,22 @@ During the first hour of the laboratory session, students will see a demonstrati
 During the second hour, students will adapt and generate the proper and obtimised code for their Social-Assistive designed task. 
 
 **Suggestions**: 
-- You can improve and automate your code if you use:
-    - For moveJ:
+- You can improve and automate your code if you use (Recommendation):
+    - For movej usually:
         ```python
         j1, j2, j3, j4, j5, j6 = np.radians(Target.Joints()).tolist()[0]
         movej_Target = f"movej([{j1},{j2}, {j3}, {j4}, {j5}, {j6}],{accel_mss},{speed_ms},{time_high},{blend_r})"
         ```
-    - For moveL:
+    - For moveL usually:
         ```python
         X, Y, Z, Roll, Pitch, Yaw = Pose_2_TxyzRxyz(Target.Pose())
-        movel_Target = f"movel(p[{X}, {Y}, {Z}, {Roll}, {Pitch}, {Yaw}], a={accel_mss}, v={speed_ms}, t={timel}, r={blend_r})"
+        movel_Target = f"movel(p[{X/1000}, {Y/1000}, {Z/1000}, {Roll}, {Pitch}, {Yaw}], a={accel_mss}, v={speed_ms}, t={timel}, r={blend_r})"
         ````
+    - `Recommendation`:
+        ```python
+        j1, j2, j3, j4, j5, j6 = np.radians(Target.Joints()).tolist()[0]
+        movej_Target = f"movel([{j1},{j2}, {j3}, {j4}, {j5}, {j6}],{accel_mss},{speed_ms},{time_high},{blend_r})"
+        ```
 - Try an OOP approach with a class RobotUR5e with atributes and methods.
 
 **Objectives:**
